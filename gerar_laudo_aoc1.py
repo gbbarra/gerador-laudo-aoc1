@@ -7,7 +7,7 @@ import datetime
 import sys
 
 # --- CONFIGURAÇÃO DAS VARIANTES COM INTERPRETAÇÕES DETALHADAS POR GENÓTIPO ---
-# Cada genótipo agora possui um texto de interpretação específico.
+# Cada genótipo possui um texto de interpretação específico.
 VARIANTS = {
     'rs10156191': {
         'name': 'p.Thr16Met',
@@ -94,7 +94,7 @@ VARIANTS = {
 
 def genotype_position(bam_file, ref_file, chrom, pos, min_depth=10, min_base_quality=20):
     """Realiza a genotipagem para uma única posição a partir de um arquivo BAM."""
-    # (O código desta função permanece o mesmo da versão anterior)
+    # (O código desta função permanece o mesmo)
     try:
         samfile = pysam.AlignmentFile(bam_file, "rb")
         if not samfile.has_index():
@@ -141,13 +141,67 @@ def genotype_position(bam_file, ref_file, chrom, pos, min_depth=10, min_base_qua
         else:
             return f"{allele1}/{allele1}", coverage, base_counts
 
-
 def generate_report(results, sample_id="N/A"):
-    """Gera o laudo final com interpretações dinâmicas baseadas no genótipo."""
+    """Gera o laudo final com interpretações dinâmicas e formatação corrigida."""
     first_variant_info = next(iter(VARIANTS.values()))
     genome_build = first_variant_info['build']
     transcript_id = first_variant_info['transcript']
 
+    # --- CORREÇÃO DA FORMATAÇÃO DA TABELA ---
+    pos_header = f"Pos. Genômica ({genome_build.upper()})"
+    result_header = "Atividade Enzimática"
+    table_header = f"{'Variante Analisada':<20} {'Id. SNV':<15} {pos_header:<24} {'Genótipo':<10} {'Zigosidade':<25} {result_header}"
+    
+    table_rows = []
+    genotype_results = {}
+    for rsid, data in results.items():
+        variant_info = VARIANTS[rsid]
+        location_str = variant_info['location']
+        genotype_call = data['genotype']
+        
+        alleles = sorted(genotype_call.split('/')) if '/' in genotype_call else [genotype_call]
+        normalized_genotype = "/".join(alleles)
+        genotype_results[rsid] = {'call': normalized_genotype}
+
+        genotype_key = ""
+        zygosity = "Indeterminado"
+        result_text = genotype_call
+        genotype_display = "N/A"
+
+        if "Baixa Cobertura" not in normalized_genotype and "Sem Leitura" not in normalized_genotype:
+            # Lógica para encontrar a chave correta no dicionário de genótipos (ex: "C/C", "C/T")
+            ref_allele = variant_info['ref']
+            alt_allele = variant_info['alt']
+            
+            if normalized_genotype == f"{ref_allele}/{ref_allele}":
+                genotype_key = f"{ref_allele}/{ref_allele}"
+            elif normalized_genotype == f"{ref_allele}/{alt_allele}":
+                genotype_key = f"{ref_allele}/{alt_allele}"
+            elif normalized_genotype == f"{alt_allele}/{alt_allele}":
+                genotype_key = f"{alt_allele}/{alt_allele}"
+            
+            if genotype_key:
+                genotype_info = variant_info['genotypes'][genotype_key]
+                genotype_results[rsid]['key'] = genotype_key
+                zygosity = genotype_info['zygosity']
+                result_text = genotype_info['result']
+                genotype_display = genotype_key
+            else:
+                zygosity, result_text, genotype_display = "Desconhecido", "Genótipo não canônico", normalized_genotype
+        
+        table_rows.append(f"{variant_info['name']:<20} {rsid:<15} {location_str:<24} {genotype_display:<10} {zygosity:<25} {result_text}")
+
+    # --- CORREÇÃO DA LÓGICA DO RESUMO GERAL ---
+    any_variant_found = False
+    for rsid, res_data in genotype_results.items():
+        key = res_data.get('key')
+        if key: # Procede apenas se a genotipagem foi bem-sucedida
+            ref_genotype = f"{VARIANTS[rsid]['ref']}/{VARIANTS[rsid]['ref']}"
+            if key != ref_genotype:
+                any_variant_found = True
+                break # Encontrou a primeira variante de risco, não precisa continuar procurando
+
+    # --- Construção do Laudo com as Correções ---
     report = f"""
 ================================================================================
                                 LAUDO GENÉTICO
@@ -165,75 +219,30 @@ O gene AOC1 (diamina oxidase) codifica a principal enzima responsável pela degr
 --------------------------------------------------------------------------------
 RESULTADOS
 --------------------------------------------------------------------------------
-"""
-    table_header = f"{'Variante Analisada':<20} {'Id. SNV':<15} {'Posição Genômica ({genome_build.upper()})':<22} {'Genótipo':<10} {'Zigosidade':<25} {'Resultado (Atividade Enzimática)'}"
-    report += table_header + "\n"
-    report += "-" * len(table_header) + "\n"
+{table_header}
+{"-" * len(table_header)}
+{'\n'.join(table_rows)}
 
-    # Preparar dados para a tabela e para a interpretação
-    genotype_results = {}
-    for rsid, data in results.items():
-        variant_info = VARIANTS[rsid]
-        location_str = variant_info['location']
-        genotype_call = data['genotype']
-        
-        alleles = sorted(genotype_call.split('/')) if '/' in genotype_call else [genotype_call]
-        normalized_genotype = "/".join(alleles)
-        genotype_results[rsid] = {'call': normalized_genotype} # Armazena o genótipo para a interpretação
-
-        if "Baixa Cobertura" in normalized_genotype or "Sem Leitura" in normalized_genotype:
-            zygosity = "Indeterminado"
-            result_text = genotype_call
-            genotype_display = "N/A"
-        else:
-            # Lógica para encontrar a chave correta no dicionário de genótipos
-            genotype_key = ""
-            if normalized_genotype == f"{variant_info['ref']}/{variant_info['ref']}":
-                genotype_key = f"{variant_info['ref']}/{variant_info['ref']}"
-            elif normalized_genotype == f"{variant_info['ref']}/{variant_info['alt']}":
-                 genotype_key = f"{variant_info['ref']}/{variant_info['alt']}"
-            elif normalized_genotype == f"{variant_info['alt']}/{variant_info['alt']}":
-                 genotype_key = f"{variant_info['alt']}/{variant_info['alt']}"
-            
-            if genotype_key:
-                genotype_info = variant_info['genotypes'][genotype_key]
-                genotype_results[rsid]['key'] = genotype_key
-                zygosity = genotype_info['zygosity']
-                result_text = genotype_info['result']
-                genotype_display = genotype_key
-            else: # Fallback para genótipos não esperados
-                zygosity, result_text, genotype_display = "Desconhecido", "Genótipo não canônico", normalized_genotype
-        
-        report += f"{variant_info['name']:<20} {rsid:<15} {location_str:<22} {genotype_display:<10} {zygosity:<25} {result_text}\n"
-
-    report += """
 --------------------------------------------------------------------------------
 INTERPRETAÇÃO DO RESULTADO
 --------------------------------------------------------------------------------
 """
-    # --- SEÇÃO DE INTERPRETAÇÃO DETALHADA E DINÂMICA ---
-    any_variant_found = any('Variante' in VARIANTS[rsid]['genotypes'].get(res.get('key', ''), {}).get('zygosity', '') for rsid, res in genotype_results.items())
-
     if not any_variant_found:
-        report += f"**RESUMO GERAL:** Nenhuma variante de risco foi detectada. O perfil genético do paciente é compatível com uma atividade normal da enzima DAO.\n\n"
+        report += f"**RESUMO GERAL:** Nenhuma das variantes de risco analisadas foi detectada. O perfil genético do paciente é compatível com uma atividade normal da enzima DAO.\n\n"
     else:
-        report += f"**RESUMO GERAL:** Foram detectadas variantes que alteram a atividade da enzima DAO. A análise detalhada abaixo descreve o impacto específico do perfil genético do paciente.\n\n"
+        report += f"**RESUMO GERAL:** Foi(ram) detectada(s) variante(s) que alteram a atividade da enzima DAO. A análise detalhada abaixo descreve o impacto específico do perfil genético do paciente.\n\n"
 
     report += "**Análise Detalhada por Variante:**\n\n"
-    
     for rsid, result_data in genotype_results.items():
         variant_info = VARIANTS[rsid]
         report += f"• **{variant_info['name']} ({rsid}):** "
-        
         genotype_key = result_data.get('key')
         if genotype_key:
-            interpretation_text = variant_info['genotypes'][genotype_key]['interpretation']
-            report += f"{interpretation_text}\n"
+            report += f"{variant_info['genotypes'][genotype_key]['interpretation']}\n\n"
         else:
-            report += f"O resultado para esta variante foi inconclusivo ({result_data['call']}).\n"
-        report += "\n"
+            report += f"O resultado para esta variante foi inconclusivo ({result_data['call']}).\n\n"
 
-    report += """Este laudo deve ser interpretado por um especialista dentro do contexto clínico e familiar do paciente.
+    report += f"""Este laudo deve ser interpretado por um especialista dentro do contexto clínico e familiar do paciente.
 
 --------------------------------------------------------------------------------
 TÉCNICA APLICADA E LIMITAÇÕES
@@ -243,16 +252,16 @@ O DNA genômico foi analisado por Sequenciamento de Nova Geração (NGS). As seq
 --------------------------------------------------------------------------------
 REFERÊNCIAS BIBLIOGRÁFICAS
 --------------------------------------------------------------------------------
-1. Maintz L, et al. Allergy. 2011 Jul;66(7):893-902.
-2. Ayuso P, et al. Pharmacogenet Genomics. 2007 Sep;17(9):687-93.
-3. Agúndez JAG, et al. PLoS One. 2012;7(11):e47571.
+1. Maintz L, et al. Association of single nucleotide polymorphisms in the diamine oxidase gene with diamine oxidase serum activities. Allergy. 2011 Jul;66(7):893-902.
+2. Ayuso P, et al. Genetic variability of human diamine oxidase: occurrence of three nonsynonymous polymorphisms and study of their effect on serum enzyme activity. Pharmacogenet Genomics. 2007 Sep;17(9):687-93.
+3. Agúndez JAG, et al. The diamine oxidase gene is associated with hypersensitivity response to non-steroidal anti-inflammatory drugs. PLoS One. 2012;7(11):e47571.
 
 ================================================================================
 """
     return report
 
 def main():
-    # (O código desta função permanece o mesmo da versão anterior)
+    # (O código desta função permanece o mesmo)
     parser = argparse.ArgumentParser(description="Gera um laudo para variantes do gene AOC1 a partir de um arquivo BAM.")
     parser.add_argument("bam_file", help="Caminho para o arquivo BAM do paciente.")
     parser.add_argument("ref_file", help="Caminho para o arquivo FASTA do genoma de referência.")
