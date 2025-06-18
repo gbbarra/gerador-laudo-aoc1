@@ -6,8 +6,8 @@ from collections import Counter
 import datetime
 import sys
 
-# --- CONFIGURAÇÃO DAS VARIANTES ---
-# Coordenadas, build do genoma e transcrito atualizados conforme solicitação.
+# --- CONFIGURAÇÃO DAS VARIANTES COM INTERPRETAÇÕES DETALHADAS POR GENÓTIPO ---
+# Cada genótipo agora possui um texto de interpretação específico.
 VARIANTS = {
     'rs10156191': {
         'name': 'p.Thr16Met',
@@ -19,9 +19,21 @@ VARIANTS = {
         'ref': 'C',
         'alt': 'T',
         'genotypes': {
-            'C/C': {'zygosity': 'Homozigoto Referência', 'result': 'Atividade padrão'},
-            'C/T': {'zygosity': 'Heterozigoto', 'result': 'Atividade moderadamente reduzida'},
-            'T/T': {'zygosity': 'Homozigoto Variante', 'result': 'Atividade reduzida'},
+            'C/C': {
+                'zygosity': 'Homozigoto Referência',
+                'result': 'Atividade padrão',
+                'interpretation': "O genótipo C/C (Thr/Thr) é o de referência (wild-type). Está associado à atividade normal da enzima DAO e ao risco basal para condições relacionadas à histamina."
+            },
+            'C/T': {
+                'zygosity': 'Heterozigoto',
+                'result': 'Atividade moderadamente reduzida',
+                'interpretation': "O genótipo C/T (Thr/Met) está associado a uma redução moderada da atividade da DAO. Este resultado sugere uma predisposição aumentada a sintomas de intolerância à histamina, maior risco de hipersensibilidade a anti-inflamatórios não esteroides (AINEs) e enxaquecas, especialmente em mulheres."
+            },
+            'T/T': {
+                'zygosity': 'Homozigoto Variante',
+                'result': 'Atividade reduzida',
+                'interpretation': "O genótipo T/T (Met/Met) está associado a uma redução ainda mais acentuada da atividade da DAO. Este resultado confere o maior risco para os sintomas mencionados, com forte predisposição à intolerância à histamina, manifestada por sintomas gastrointestinais e dores de cabeça."
+            }
         }
     },
     'rs1049742': {
@@ -34,9 +46,21 @@ VARIANTS = {
         'ref': 'C',
         'alt': 'T',
         'genotypes': {
-            'C/C': {'zygosity': 'Homozigoto Referência', 'result': 'Atividade padrão'},
-            'C/T': {'zygosity': 'Heterozigoto', 'result': 'Atividade minimamente reduzida ou normal'},
-            'T/T': {'zygosity': 'Homozigoto Variante', 'result': 'Atividade levemente reduzida'},
+            'C/C': {
+                'zygosity': 'Homozigoto Referência',
+                'result': 'Atividade padrão',
+                'interpretation': "O genótipo C/C (Ser/Ser) é o de referência e está associado à atividade enzimática normal da DAO."
+            },
+            'C/T': {
+                'zygosity': 'Heterozigoto',
+                'result': 'Atividade minimamente reduzida ou normal',
+                'interpretation': "O genótipo C/T (Ser/Phe) tem um efeito mínimo ou negligenciável na atividade da DAO. Geralmente, não está associado a um fenótipo clínico claro, mas pode contribuir para a intolerância à histamina apenas em combinação com outros fatores de risco."
+            },
+            'T/T': {
+                'zygosity': 'Homozigoto Variante',
+                'result': 'Atividade levemente reduzida',
+                'interpretation': "O genótipo T/T (Phe/Phe) tem um efeito mínimo na atividade da DAO. Sendo raro e de baixo impacto, seu significado clínico é incerto e não está claramente associado a sintomas de intolerância à histamina de forma isolada."
+            }
         }
     },
     'rs1049793': {
@@ -49,17 +73,28 @@ VARIANTS = {
         'ref': 'C',
         'alt': 'G',
         'genotypes': {
-            'C/C': {'zygosity': 'Homozigoto Referência', 'result': 'Atividade padrão'},
-            'C/G': {'zygosity': 'Heterozigoto', 'result': 'Atividade reduzida (~34% de perda)'},
-            'G/G': {'zygosity': 'Homozigoto Variante', 'result': 'Atividade severamente reduzida (~49% de perda)'},
+            'C/C': {
+                'zygosity': 'Homozigoto Referência',
+                'result': 'Atividade padrão',
+                'interpretation': "O genótipo C/C (His/His) é o de referência e está associado à atividade enzimática normal da DAO."
+            },
+            'C/G': {
+                'zygosity': 'Heterozigoto',
+                'result': 'Atividade reduzida (~34% de perda)',
+                'interpretation': "O genótipo C/G (His/Asp) causa uma perda significativa da atividade da DAO (aprox. 34%). Este resultado indica um risco moderadamente aumentado para intolerância à histamina, com possível predisposição a sintomas gastrointestinais e cutâneos relacionados à histamina."
+            },
+            'G/G': {
+                'zygosity': 'Homozigoto Variante',
+                'result': 'Atividade severamente reduzida (~49% de perda)',
+                'interpretation': "O genótipo G/G (Asp/Asp) causa uma perda severa da atividade da DAO (aprox. 49%). Este resultado indica uma forte deficiência de DAO e um alto risco de intolerância à histamina, com predisposição a sintomas como distúrbios gastrointestinais, dores de cabeça e rubor facial."
+            }
         }
     }
 }
 
 def genotype_position(bam_file, ref_file, chrom, pos, min_depth=10, min_base_quality=20):
-    """
-    Realiza a genotipagem para uma única posição a partir de um arquivo BAM.
-    """
+    """Realiza a genotipagem para uma única posição a partir de um arquivo BAM."""
+    # (O código desta função permanece o mesmo da versão anterior)
     try:
         samfile = pysam.AlignmentFile(bam_file, "rb")
         if not samfile.has_index():
@@ -72,7 +107,6 @@ def genotype_position(bam_file, ref_file, chrom, pos, min_depth=10, min_base_qua
     except ValueError as e:
         print(f"Erro ao abrir os arquivos: {e}. Verifique se os nomes dos cromossomos são consistentes.")
         sys.exit(1)
-
     base_counts = Counter()
     coverage = 0
     try:
@@ -89,18 +123,14 @@ def genotype_position(bam_file, ref_file, chrom, pos, min_depth=10, min_base_qua
         samfile.close()
         reffile.close()
         sys.exit(1)
-
     samfile.close()
     reffile.close()
-
     if coverage < min_depth:
         return "Baixa Cobertura", coverage, base_counts
     if not base_counts:
         return "Sem Leitura", coverage, base_counts
-
     total_reads = sum(base_counts.values())
     top_alleles = [item[0] for item in base_counts.most_common(2)]
-    
     if len(top_alleles) == 1:
         return f"{top_alleles[0]}/{top_alleles[0]}", coverage, base_counts
     else:
@@ -113,10 +143,7 @@ def genotype_position(bam_file, ref_file, chrom, pos, min_depth=10, min_base_qua
 
 
 def generate_report(results, sample_id="N/A"):
-    """
-    Gera o laudo final com base nos resultados da genotipagem.
-    """
-    # Pega o build e o transcrito da primeira variante para usar no texto do laudo
+    """Gera o laudo final com interpretações dinâmicas baseadas no genótipo."""
     first_variant_info = next(iter(VARIANTS.values()))
     genome_build = first_variant_info['build']
     transcript_id = first_variant_info['transcript']
@@ -143,7 +170,8 @@ RESULTADOS
     report += table_header + "\n"
     report += "-" * len(table_header) + "\n"
 
-    found_variants_info = []
+    # Preparar dados para a tabela e para a interpretação
+    genotype_results = {}
     for rsid, data in results.items():
         variant_info = VARIANTS[rsid]
         location_str = variant_info['location']
@@ -151,48 +179,61 @@ RESULTADOS
         
         alleles = sorted(genotype_call.split('/')) if '/' in genotype_call else [genotype_call]
         normalized_genotype = "/".join(alleles)
+        genotype_results[rsid] = {'call': normalized_genotype} # Armazena o genótipo para a interpretação
 
         if "Baixa Cobertura" in normalized_genotype or "Sem Leitura" in normalized_genotype:
             zygosity = "Indeterminado"
             result_text = genotype_call
             genotype_display = "N/A"
         else:
-            genotype_key = f"{variant_info['ref']}/{variant_info['alt']}"
+            # Lógica para encontrar a chave correta no dicionário de genótipos
+            genotype_key = ""
             if normalized_genotype == f"{variant_info['ref']}/{variant_info['ref']}":
                 genotype_key = f"{variant_info['ref']}/{variant_info['ref']}"
+            elif normalized_genotype == f"{variant_info['ref']}/{variant_info['alt']}":
+                 genotype_key = f"{variant_info['ref']}/{variant_info['alt']}"
             elif normalized_genotype == f"{variant_info['alt']}/{variant_info['alt']}":
                  genotype_key = f"{variant_info['alt']}/{variant_info['alt']}"
             
-            genotype_info = variant_info['genotypes'].get(genotype_key, {'zygosity': 'Desconhecido', 'result': 'Genótipo não canônico'})
-            
-            zygosity = genotype_info['zygosity']
-            result_text = genotype_info['result']
-            genotype_display = genotype_key
-
+            if genotype_key:
+                genotype_info = variant_info['genotypes'][genotype_key]
+                genotype_results[rsid]['key'] = genotype_key
+                zygosity = genotype_info['zygosity']
+                result_text = genotype_info['result']
+                genotype_display = genotype_key
+            else: # Fallback para genótipos não esperados
+                zygosity, result_text, genotype_display = "Desconhecido", "Genótipo não canônico", normalized_genotype
+        
         report += f"{variant_info['name']:<20} {rsid:<15} {location_str:<22} {genotype_display:<10} {zygosity:<25} {result_text}\n"
-
-        if "Variante" in zygosity:
-            found_variants_info.append({'rsid': rsid, 'name': variant_info['name'], 'zygosity': zygosity.lower().replace(' variante', '')})
 
     report += """
 --------------------------------------------------------------------------------
 INTERPRETAÇÃO DO RESULTADO
 --------------------------------------------------------------------------------
 """
-    if not found_variants_info:
-        report += f"NÃO FOI DETECTADA a presença de nenhuma das variantes analisadas (p.Thr16Met, p.Ser332Phe, p.His645Asp) no gene AOC1 (transcrito {transcript_id}). O genótipo do paciente é o de referência ('wild-type'), o que é compatível com uma atividade enzimática padrão da DAO.\n"
-    else:
-        variant_summary_parts = [f"a variante {v['name']} ({v['rsid']}) em {v['zygosity']}" for v in found_variants_info]
-        report += f"Foi detectada a presença de: {', '.join(variant_summary_parts)}.\n\n"
-        if any(v['rsid'] == 'rs10156191' for v in found_variants_info):
-            report += "- **p.Thr16Met (rs10156191)**: Associada a uma redução moderada da atividade da DAO. Portadores do alelo variante podem ter maior risco de intolerância à histamina, enxaquecas e hipersensibilidade a AINEs.\n"
-        if any(v['rsid'] == 'rs1049742' for v in found_variants_info):
-            report += "- **p.Ser332Phe (rs1049742)**: O impacto desta variante na atividade da DAO é considerado mínimo. Geralmente, não está associada a um fenótipo clínico claro.\n"
-        if any(v['rsid'] == 'rs1049793' for v in found_variants_info):
-             report += "- **p.His645Asp (rs1049793)**: Associada a uma redução substancial na atividade da DAO. Portadores do alelo variante têm um risco elevado de deficiência de DAO e sintomas associados.\n"
+    # --- SEÇÃO DE INTERPRETAÇÃO DETALHADA E DINÂMICA ---
+    any_variant_found = any('Variante' in VARIANTS[rsid]['genotypes'].get(res.get('key', ''), {}).get('zygosity', '') for rsid, res in genotype_results.items())
 
-    report += """
-Este laudo deve ser interpretado por um especialista dentro do contexto clínico e familiar do paciente.
+    if not any_variant_found:
+        report += f"**RESUMO GERAL:** Nenhuma variante de risco foi detectada. O perfil genético do paciente é compatível com uma atividade normal da enzima DAO.\n\n"
+    else:
+        report += f"**RESUMO GERAL:** Foram detectadas variantes que alteram a atividade da enzima DAO. A análise detalhada abaixo descreve o impacto específico do perfil genético do paciente.\n\n"
+
+    report += "**Análise Detalhada por Variante:**\n\n"
+    
+    for rsid, result_data in genotype_results.items():
+        variant_info = VARIANTS[rsid]
+        report += f"• **{variant_info['name']} ({rsid}):** "
+        
+        genotype_key = result_data.get('key')
+        if genotype_key:
+            interpretation_text = variant_info['genotypes'][genotype_key]['interpretation']
+            report += f"{interpretation_text}\n"
+        else:
+            report += f"O resultado para esta variante foi inconclusivo ({result_data['call']}).\n"
+        report += "\n"
+
+    report += """Este laudo deve ser interpretado por um especialista dentro do contexto clínico e familiar do paciente.
 
 --------------------------------------------------------------------------------
 TÉCNICA APLICADA E LIMITAÇÕES
@@ -211,14 +252,13 @@ REFERÊNCIAS BIBLIOGRÁFICAS
     return report
 
 def main():
+    # (O código desta função permanece o mesmo da versão anterior)
     parser = argparse.ArgumentParser(description="Gera um laudo para variantes do gene AOC1 a partir de um arquivo BAM.")
     parser.add_argument("bam_file", help="Caminho para o arquivo BAM do paciente.")
     parser.add_argument("ref_file", help="Caminho para o arquivo FASTA do genoma de referência.")
     parser.add_argument("--sample_id", help="ID do paciente/amostra para o laudo.", default="Amostra Anônima")
     parser.add_argument("--output_file", help="Nome do arquivo de texto para salvar o laudo.", default=None)
-    
     args = parser.parse_args()
-
     results = {}
     print("Analisando variantes no gene AOC1...")
     for rsid, info in VARIANTS.items():
@@ -226,10 +266,8 @@ def main():
         genotype, coverage, counts = genotype_position(args.bam_file, args.ref_file, info['chrom'], info['pos'])
         results[rsid] = {'genotype': genotype, 'coverage': coverage, 'counts': dict(counts)}
         print(f"    -> Resultado: Genótipo={genotype}, Cobertura={coverage}x, Contagens de Bases={dict(counts)}")
-
     print("\nGerando laudo...")
     final_report = generate_report(results, args.sample_id)
-    
     if args.output_file:
         with open(args.output_file, 'w', encoding='utf-8') as f:
             f.write(final_report)
