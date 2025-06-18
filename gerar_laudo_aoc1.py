@@ -7,7 +7,7 @@ import datetime
 import sys
 
 # --- CONFIGURAÇÃO DAS VARIANTES COM INTERPRETAÇÕES DETALHADAS POR GENÓTIPO ---
-# Cada genótipo possui um texto de interpretação específico.
+# A base de conhecimento permanece a mesma.
 VARIANTS = {
     'rs10156191': {
         'name': 'p.Thr16Met',
@@ -142,18 +142,14 @@ def genotype_position(bam_file, ref_file, chrom, pos, min_depth=10, min_base_qua
             return f"{allele1}/{allele1}", coverage, base_counts
 
 def generate_report(results, sample_id="N/A"):
-    """Gera o laudo final com interpretações dinâmicas e formatação corrigida."""
+    """Gera o laudo com o novo estilo visual: sem linhas, usando negrito e maiúsculas."""
     first_variant_info = next(iter(VARIANTS.values()))
     genome_build = first_variant_info['build']
     transcript_id = first_variant_info['transcript']
 
-    # --- CORREÇÃO DA FORMATAÇÃO DA TABELA ---
-    pos_header = f"Pos. Genômica ({genome_build.upper()})"
-    result_header = "Atividade Enzimática"
-    table_header = f"{'Variante Analisada':<20} {'Id. SNV':<15} {pos_header:<24} {'Genótipo':<10} {'Zigosidade':<25} {result_header}"
-    
-    table_rows = []
-    genotype_results = {}
+    # --- Seção de Resultados em formato de lista ---
+    result_blocks = []
+    genotype_results_for_interpretation = {}
     for rsid, data in results.items():
         variant_info = VARIANTS[rsid]
         location_str = variant_info['location']
@@ -161,102 +157,73 @@ def generate_report(results, sample_id="N/A"):
         
         alleles = sorted(genotype_call.split('/')) if '/' in genotype_call else [genotype_call]
         normalized_genotype = "/".join(alleles)
-        genotype_results[rsid] = {'call': normalized_genotype}
+        genotype_results_for_interpretation[rsid] = {'call': normalized_genotype}
 
-        genotype_key = ""
-        zygosity = "Indeterminado"
-        result_text = genotype_call
-        genotype_display = "N/A"
+        block = f"**{variant_info['name'].upper()} ({rsid})**\n"
+        block += f"  - Posição Genômica ({genome_build.upper()}): {location_str}\n"
 
-        if "Baixa Cobertura" not in normalized_genotype and "Sem Leitura" not in normalized_genotype:
-            # Lógica para encontrar a chave correta no dicionário de genótipos (ex: "C/C", "C/T")
-            ref_allele = variant_info['ref']
-            alt_allele = variant_info['alt']
-            
-            if normalized_genotype == f"{ref_allele}/{ref_allele}":
-                genotype_key = f"{ref_allele}/{ref_allele}"
-            elif normalized_genotype == f"{ref_allele}/{alt_allele}":
-                genotype_key = f"{ref_allele}/{alt_allele}"
-            elif normalized_genotype == f"{alt_allele}/{alt_allele}":
-                genotype_key = f"{alt_allele}/{alt_allele}"
-            
+        if "Baixa Cobertura" in normalized_genotype or "Sem Leitura" in normalized_genotype:
+            block += f"  - Genótipo Identificado: INDETERMINADO ({genotype_call})"
+        else:
+            ref_allele, alt_allele = variant_info['ref'], variant_info['alt']
+            genotype_key = ""
+            if normalized_genotype == f"{ref_allele}/{ref_allele}": genotype_key = f"{ref_allele}/{ref_allele}"
+            elif normalized_genotype == f"{ref_allele}/{alt_allele}": genotype_key = f"{ref_allele}/{alt_allele}"
+            elif normalized_genotype == f"{alt_allele}/{alt_allele}": genotype_key = f"{alt_allele}/{alt_allele}"
+
             if genotype_key:
                 genotype_info = variant_info['genotypes'][genotype_key]
-                genotype_results[rsid]['key'] = genotype_key
-                zygosity = genotype_info['zygosity']
-                result_text = genotype_info['result']
-                genotype_display = genotype_key
+                genotype_results_for_interpretation[rsid]['key'] = genotype_key
+                block += f"  - Genótipo Identificado: **{genotype_key} ({genotype_info['zygosity']})**\n"
+                block += f"  - Resultado: **{genotype_info['result']}**"
             else:
-                zygosity, result_text, genotype_display = "Desconhecido", "Genótipo não canônico", normalized_genotype
+                block += f"  - Genótipo Identificado: {normalized_genotype} (Genótipo não canônico)"
         
-        table_rows.append(f"{variant_info['name']:<20} {rsid:<15} {location_str:<24} {genotype_display:<10} {zygosity:<25} {result_text}")
+        result_blocks.append(block)
 
-    # --- CORREÇÃO DA LÓGICA DO RESUMO GERAL ---
-    any_variant_found = False
-    for rsid, res_data in genotype_results.items():
-        key = res_data.get('key')
-        if key: # Procede apenas se a genotipagem foi bem-sucedida
-            ref_genotype = f"{VARIANTS[rsid]['ref']}/{VARIANTS[rsid]['ref']}"
-            if key != ref_genotype:
-                any_variant_found = True
-                break # Encontrou a primeira variante de risco, não precisa continuar procurando
+    # --- Lógica do Resumo Geral ---
+    any_variant_found = any('Variante' in VARIANTS[rsid]['genotypes'].get(res.get('key', ''), {}).get('zygosity', '') for rsid, res in genotype_results_for_interpretation.items())
 
-    # --- Construção do Laudo com as Correções ---
+    # --- Construção do Laudo Final ---
     report = f"""
-================================================================================
-                                LAUDO GENÉTICO
-================================================================================
+**LAUDO GENÉTICO**
 
+**INFORMAÇÕES DO PACIENTE**
 PACIENTE: {sample_id}
 DATA DO LAUDO: {datetime.date.today().strftime('%d/%m/%Y')}
-EXAME: Análise de variantes no gene AOC1 (DAO) por Sequenciamento de Nova Geração
+EXAME: Análise de variantes no gene AOC1 (DAO)
 
---------------------------------------------------------------------------------
-INTRODUÇÃO: GENE AOC1 (DAO) E METABOLISMO DA HISTAMINA
---------------------------------------------------------------------------------
+**INTRODUÇÃO**
 O gene AOC1 (diamina oxidase) codifica a principal enzima responsável pela degradação da histamina no trato digestivo. Variantes genéticas neste gene podem reduzir a atividade da enzima, levando a um acúmulo de histamina e a um quadro clínico conhecido como Intolerância à Histamina (HIT), que pode incluir sintomas como enxaqueca, distúrbios gastrointestinais e reações cutâneas.
 
---------------------------------------------------------------------------------
-RESULTADOS
---------------------------------------------------------------------------------
-{table_header}
-{"-" * len(table_header)}
-{'\n'.join(table_rows)}
+**RESULTADOS DA ANÁLISE**
+{'\n\n'.join(result_blocks)}
 
---------------------------------------------------------------------------------
-INTERPRETAÇÃO DO RESULTADO
---------------------------------------------------------------------------------
+**INTERPRETAÇÃO DETALHADA**
 """
     if not any_variant_found:
-        report += f"**RESUMO GERAL:** Nenhuma das variantes de risco analisadas foi detectada. O perfil genético do paciente é compatível com uma atividade normal da enzima DAO.\n\n"
+        report += f"**RESUMO GERAL:** Nenhuma das variantes de risco analisadas foi detectada. O perfil genético do paciente é compatível com uma **atividade normal** da enzima DAO.\n\n"
     else:
-        report += f"**RESUMO GERAL:** Foi(ram) detectada(s) variante(s) que alteram a atividade da enzima DAO. A análise detalhada abaixo descreve o impacto específico do perfil genético do paciente.\n\n"
+        report += f"**RESUMO GERAL:** Foi(ram) detectada(s) variante(s) que alteram a atividade da enzima DAO. O perfil genético do paciente sugere uma **atividade enzimática reduzida**. A análise detalhada abaixo descreve o impacto específico de cada genótipo.\n\n"
 
-    report += "**Análise Detalhada por Variante:**\n\n"
-    for rsid, result_data in genotype_results.items():
+    report += "**ANÁLISE POR VARIANTE:**\n"
+    for rsid, result_data in genotype_results_for_interpretation.items():
         variant_info = VARIANTS[rsid]
         report += f"• **{variant_info['name']} ({rsid}):** "
         genotype_key = result_data.get('key')
         if genotype_key:
-            report += f"{variant_info['genotypes'][genotype_key]['interpretation']}\n\n"
+            report += f"{variant_info['genotypes'][genotype_key]['interpretation']}\n"
         else:
-            report += f"O resultado para esta variante foi inconclusivo ({result_data['call']}).\n\n"
+            report += f"O resultado para esta variante foi inconclusivo ({result_data['call']}).\n"
 
-    report += f"""Este laudo deve ser interpretado por um especialista dentro do contexto clínico e familiar do paciente.
-
---------------------------------------------------------------------------------
-TÉCNICA APLICADA E LIMITAÇÕES
---------------------------------------------------------------------------------
+    report += f"""
+**TÉCNICA APLICADA E LIMITAÇÕES**
 O DNA genômico foi analisado por Sequenciamento de Nova Geração (NGS). As sequências foram alinhadas ao genoma humano de referência ({genome_build.upper()}) e as variantes de interesse no gene AOC1, baseadas no transcrito de referência {transcript_id}, foram genotipadas. A análise se restringe às variantes descritas. A genotipagem depende da cobertura na posição de interesse (limite: 10x). Variantes estruturais complexas não são detectadas.
 
---------------------------------------------------------------------------------
-REFERÊNCIAS BIBLIOGRÁFICAS
---------------------------------------------------------------------------------
-1. Maintz L, et al. Association of single nucleotide polymorphisms in the diamine oxidase gene with diamine oxidase serum activities. Allergy. 2011 Jul;66(7):893-902.
-2. Ayuso P, et al. Genetic variability of human diamine oxidase: occurrence of three nonsynonymous polymorphisms and study of their effect on serum enzyme activity. Pharmacogenet Genomics. 2007 Sep;17(9):687-93.
-3. Agúndez JAG, et al. The diamine oxidase gene is associated with hypersensitivity response to non-steroidal anti-inflammatory drugs. PLoS One. 2012;7(11):e47571.
-
-================================================================================
+**REFERÊNCIAS BIBLIOGRÁFICAS**
+1. Maintz L, et al. Allergy. 2011 Jul;66(7):893-902.
+2. Ayuso P, et al. Pharmacogenet Genomics. 2007 Sep;17(9):687-93.
+3. Agúndez JAG, et al. PLoS One. 2012;7(11):e47571.
 """
     return report
 
