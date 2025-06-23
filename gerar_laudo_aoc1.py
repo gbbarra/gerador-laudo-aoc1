@@ -7,30 +7,39 @@ import datetime
 import sys
 import os
 
-# --- BASE DE CONHECIMENTO (sem alterações) ---
+# --- BASE DE CONHECIMENTO (CORRIGIDA E REVISADA) ---
 VARIANTS = {
     'rs10156191': {
         'gene': 'AOC1', 'transcript': 'NM_001091.4', 'hgvsc': 'c.47C>T', 'hgvsp': 'p.Thr16Met', 'build': 'hg38', 'location': 'chr7:150856517', 'chrom': 'chr7', 'pos': 150856517, 'ref': 'C', 'alt': 'T',
         'genotypes': {
-            'C/C': {'zygosity': 'Homozigoto Referência', 'result': 'padrão', 'interpretation': "O genótipo C/C (Thr/Thr) é o de referência (wild-type). Está associado à atividade normal da enzima DAO e ao risco basal para condições relacionadas à histamina."},
-            'C/T': {'zygosity': 'Heterozigoto', 'result': 'moderadamente reduzida', 'interpretation': "O genótipo C/T (Thr/Met) está associado a uma redução moderada da atividade da DAO. Este resultado sugere uma predisposição aumentada para sintomas de intolerância à histamina, maior risco de hipersensibilidade a anti-inflamatórios não esteroides (AINEs) e enxaquecas, especialmente em mulheres."},
-            'T/T': {'zygosity': 'Homozigoto Variante', 'result': 'reduzida', 'interpretation': "O genótipo T/T (Met/Met) está associado a uma redução acentuada da atividade da DAO. Este resultado confere o maior risco para a predisposição à intolerância à histamina, manifestada por sintomas gastrointestinais e dores de cabeça."}
+            'C/C': {'zygosity': 'Homozigoto Referência', 'result': 'padrão', 
+                    'interpretation': "O genótipo C/C (Thr/Thr) é o de referência (wild-type) e está associado à atividade normal da enzima DAO, conferindo um risco basal para condições relacionadas à histamina."},
+            'C/T': {'zygosity': 'Heterozigoto', 'result': 'moderadamente reduzida', 
+                    'interpretation': "O genótipo C/T (Thr/Met) está associado a uma redução moderada da atividade da DAO. Este resultado sugere uma predisposição a sintomas de intolerância à histamina e um risco aumentado de hipersensibilidade a anti-inflamatórios não esteroides (AINEs) e enxaquecas, especialmente em mulheres."},
+            'T/T': {'zygosity': 'Homozigoto Variante', 'result': 'reduzida', 
+                    'interpretation': "O genótipo T/T (Met/Met) está associado a uma redução adicional na atividade da DAO. Este resultado confere um risco ainda mais elevado para intolerância à histamina e para as condições associadas (hipersensibilidade a AINEs, enxaqueca), devido a um efeito aditivo."}
         }
     },
     'rs1049742': {
         'gene': 'AOC1', 'transcript': 'NM_001091.4', 'hgvsc': 'c.995C>T', 'hgvsp': 'p.Ser332Phe', 'build': 'hg38', 'location': 'chr7:150857465', 'chrom': 'chr7', 'pos': 150857465, 'ref': 'C', 'alt': 'T',
         'genotypes': {
-            'C/C': {'zygosity': 'Homozigoto Referência', 'result': 'padrão', 'interpretation': "O genótipo C/C (Ser/Ser) é o de referência (wild-type) e está associado à atividade enzimática normal da DAO."},
-            'C/T': {'zygosity': 'Heterozigoto', 'result': 'minimamente reduzida ou normal', 'interpretation': "O genótipo C/T (Ser/Phe) tem um efeito mínimo ou negligenciável na atividade da DAO. Geralmente, não está associado a um fenótipo clínico claro, mas pode contribuir para a intolerância à histamina apenas em combinação com outros fatores de risco."},
-            'T/T': {'zygosity': 'Homozigoto Variante', 'result': 'levemente reduzida', 'interpretation': "O genótipo T/T (Phe/Phe) tem um efeito mínimo na atividade da DAO. Sendo raro e de baixo impacto, seu significado clínico é incerto e não está claramente associado a sintomas de intolerância à histamina de forma isolada."}
+            'C/C': {'zygosity': 'Homozigoto Referência', 'result': 'padrão', 
+                    'interpretation': "O genótipo C/C (Ser/Ser) é o de referência (wild-type) e está associado à atividade enzimática normal da DAO."},
+            'C/T': {'zygosity': 'Heterozigoto', 'result': 'minimamente reduzida ou normal', 
+                    'interpretation': "O genótipo C/T (Ser/Phe) tem um efeito mínimo ou negligenciável na atividade da DAO. Isoladamente, não está associado a um fenótipo clínico claro, podendo contribuir para a intolerância à histamina apenas em combinação com outros fatores de risco genéticos ou ambientais."},
+            'T/T': {'zygosity': 'Homozigoto Variante', 'result': 'levemente reduzida', 
+                    'interpretation': "O genótipo T/T (Phe/Phe), por ser raro, tem um significado clínico incerto. Embora possa causar uma leve redução na atividade da DAO, seu impacto é sutil e não está claramente associado a sintomas de forma isolada."}
         }
     },
     'rs1049793': {
         'gene': 'AOC1', 'transcript': 'NM_001091.4', 'hgvsc': 'c.1933C>G', 'hgvsp': 'p.His645Asp', 'build': 'hg38', 'location': 'chr7:150860577', 'chrom': 'chr7', 'pos': 150860577, 'ref': 'C', 'alt': 'G',
         'genotypes': {
-            'C/C': {'zygosity': 'Homozigoto Referência', 'result': 'padrão', 'interpretation': "O genótipo C/C (His/His) é o de referência (wild-type) e está associado à atividade enzimática normal da DAO."},
-            'C/G': {'zygosity': 'Heterozigoto', 'result': 'reduzida (↓ ~34%)', 'interpretation': "O genótipo C/G (His/Asp) causa uma perda significativa da atividade da DAO (aprox. 34%). Este resultado indica um risco moderadamente aumentado para intolerância à histamina, com possível predisposição a sintomas gastrointestinais e cutâneos relacionados à histamina."},
-            'G/G': {'zygosity': 'Homozigoto Variante', 'result': 'severamente reduzida (↓ ~49%)', 'interpretation': "O genótipo G/G (Asp/Asp) causa uma perda severa da atividade da DAO (aprox. 49%). Este resultado indica uma forte deficiência de DAO e um alto risco de intolerância à histamina, com predisposição a sintomas como distúrbios gastrointestinais, dores de cabeça e rubor facial."}
+            'C/C': {'zygosity': 'Homozigoto Referência', 'result': 'padrão', 
+                    'interpretation': "O genótipo C/C (His/His) é o de referência (wild-type) e está associado à atividade enzimática normal da DAO."},
+            'C/G': {'zygosity': 'Heterozigoto', 'result': 'reduzida (↓ ~34%)', 
+                    'interpretation': "O genótipo C/G (His/Asp) causa uma perda de atividade da DAO de aproximadamente 34% (retendo ~66% da função normal). Este resultado indica um risco moderadamente aumentado para intolerância à histamina, com possível predisposição a sintomas gastrointestinais e cutâneos (como dermatite)."},
+            'G/G': {'zygosity': 'Homozigoto Variante', 'result': 'severamente reduzida (↓ ~49%)', 
+                    'interpretation': "O genótipo G/G (Asp/Asp) causa uma perda de atividade da DAO de aproximadamente 49% (retendo ~51% da função normal). Este resultado caracteriza uma forte deficiência de DAO e um alto risco de intolerância à histamina, com predisposição a sintomas como distúrbios gastrointestinais, dores de cabeça e rubor facial."}
         }
     }
 }
@@ -188,6 +197,7 @@ def generate_html_report(results, sample_id, bam_filename, min_bq, min_mq):
         """
     html_content = html_content.rstrip('<br><br>') + '</p>'
     
+    # --- Geração do resumo dinâmico ---
     summary_html = ""
     num_risk_variants = len(found_risk_variants)
     if num_risk_variants == 0:
@@ -208,7 +218,29 @@ def generate_html_report(results, sample_id, bam_filename, min_bq, min_mq):
         
         summary_html = f"{verb} {variant_text} {variant_list_str}, que, em conjunto, {conclusion_text}"
     
-    html_content += f'<hr><p><strong>INTERPRETAÇÃO DO RESULTADO</strong><br><br>{summary_html}<br></p>'
+    # --- Bloco de texto fixo ---
+    fixed_interpretation_text = """
+    <br><br>
+    Portadores das variantes p.(Thr16Met), p.(Ser332Phe) e p.(His645Asp) mostram atividade enzimática
+    diminuída em comparação aos não portadores das referidas variantes (1,2). Foi descrito que a variante
+    p.(Thr16Met) tem efeito intermediário e a variante p.(His645Asp) tem efeito mais severo, sendo a
+    variante p.(Ser332Phe) a que afeta menos a atividade enzimática.<br><br>
+    A variante c.47C>T p.(Thr16Met) foi associada a um maior risco de hipersensibilidade a anti-
+    inflamatórios não esteroides (3).<br><br>
+    As variantes de suscetibilidade são aquelas alterações no DNA que afetam a atividade de uma
+    enzima/metabólito/proteína influenciando o risco de desenvolver uma doença. Para que esta variante
+    genética se expresse muitas vezes, requer o envolvimento de fatores não genéticos.<br><br>
+    A deficiência de DAO é uma alteração no metabolismo da histamina alimentar devido a uma menor
+    atividade da enzima diamina oxidase, produzindo um acúmulo de histamina no plasma. O quadro clínico
+    varia desde assintomáticos até pacientes com enxaquecas, distúrbios gastrointestinais, dermatológicos,
+    entre outros.<br><br>
+    <strong>Este laudo deve ser interpretado por um especialista dentro do contexto clínico e da história familiar do
+    paciente, juntamente com outros achados laboratoriais. Caso o médico solicitante julgue necessário,
+    recomenda-se aconselhamento genético.</strong>
+    """
+    
+    # --- Montagem da seção de Interpretação final ---
+    html_content += f'<hr><p><strong>INTERPRETAÇÃO DO RESULTADO</strong><br><br>{summary_html}{fixed_interpretation_text}</p>'
 
     html_content += f'<hr><p><strong>CONTROLE DE QUALIDADE DA GENOTIPAGEM</strong><br><br>'
     for rsid, data in results.items():
@@ -234,9 +266,9 @@ def generate_html_report(results, sample_id, bam_filename, min_bq, min_mq):
         <hr>
         <p>
             <strong>REFERÊNCIAS BIBLIOGRÁFICAS</strong><br><br>
-            1. Maintz L, et al. Allergy. 2011 Jul;66(7):893-902.<br>
-            2. Ayuso P, et al. Pharmacogenet Genomics. 2007 Sep;17(9):687-93.<br>
-            3. Agúndez JAG, et al. PLoS One. 2012;7(11):e47571.<br>
+            1) Maintz L, et al. Association of single nucleotide polymorphisms in the diamine oxidase gene with diamine oxidase serum activities. Allergy. 2011 Jul;66(7):893-902.<br>
+            2) Ayuso P, et al. Genetic variability of human diamine oxidase: occurrence of three nonsynonymous polymorphisms and study of their effect on serum enzyme activity. Pharmacogenet Genomics. 2007 Sep;17(9):687-93.<br>
+            3) Agúndez José A G et al. The diamine oxidase gene is associated with hypersensitivity response to non-steroidal anti-inflammatory drugs. PLoS One. 2012;7(11):e47571.<br>
         </p>
     </body></html>
     """
