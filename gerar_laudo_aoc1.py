@@ -7,17 +7,17 @@ import datetime
 import sys
 import os
 
-# --- BASE DE CONHECIMENTO (CORRIGIDA E REVISADA) ---
+# --- BASE DE CONHECIMENTO (Ajustada para separar resultado funcional da interpretação clínica) ---
 VARIANTS = {
     'rs10156191': {
         'gene': 'AOC1', 'transcript': 'NM_001091.4', 'hgvsc': 'c.47C>T', 'hgvsp': 'p.Thr16Met', 'build': 'hg38', 'location': 'chr7:150856517', 'chrom': 'chr7', 'pos': 150856517, 'ref': 'C', 'alt': 'T',
         'genotypes': {
             'C/C': {'zygosity': 'Homozigoto Referência', 'result': 'padrão', 
-                    'interpretation': "O genótipo C/C (Thr/Thr) é o de referência (wild-type) e está associado à atividade normal da enzima DAO, conferindo um risco basal para condições relacionadas à histamina."},
+                    'interpretation': "O genótipo C/C (Thr/Thr) é o de referência (wild-type) e está associado à atividade normal da enzima DAO."},
             'C/T': {'zygosity': 'Heterozigoto', 'result': 'moderadamente reduzida', 
-                    'interpretation': "O genótipo C/T (Thr/Met) está associado a uma redução moderada da atividade da DAO. Este resultado sugere uma predisposição a sintomas de intolerância à histamina e um risco aumentado de hipersensibilidade a anti-inflamatórios não esteroides (AINEs) e enxaquecas, especialmente em mulheres."},
+                    'interpretation': "O genótipo C/T (Thr/Met) está associado a uma redução moderada da atividade da DAO."},
             'T/T': {'zygosity': 'Homozigoto Variante', 'result': 'reduzida', 
-                    'interpretation': "O genótipo T/T (Met/Met) está associado a uma redução adicional na atividade da DAO. Este resultado confere um risco ainda mais elevado para intolerância à histamina e para as condições associadas (hipersensibilidade a AINEs, enxaqueca), devido a um efeito aditivo."}
+                    'interpretation': "O genótipo T/T (Met/Met) está associado a uma redução na atividade da DAO."}
         }
     },
     'rs1049742': {
@@ -26,9 +26,9 @@ VARIANTS = {
             'C/C': {'zygosity': 'Homozigoto Referência', 'result': 'padrão', 
                     'interpretation': "O genótipo C/C (Ser/Ser) é o de referência (wild-type) e está associado à atividade enzimática normal da DAO."},
             'C/T': {'zygosity': 'Heterozigoto', 'result': 'minimamente reduzida ou normal', 
-                    'interpretation': "O genótipo C/T (Ser/Phe) tem um efeito mínimo ou negligenciável na atividade da DAO. Isoladamente, não está associado a um fenótipo clínico claro, podendo contribuir para a intolerância à histamina apenas em combinação com outros fatores de risco genéticos ou ambientais."},
-            'T/T': {'zygosity': 'Homozigoto Variante', 'result': 'levemente reduzida', 
-                    'interpretation': "O genótipo T/T (Phe/Phe), por ser raro, tem um significado clínico incerto. Embora possa causar uma leve redução na atividade da DAO, seu impacto é sutil e não está claramente associado a sintomas de forma isolada."}
+                    'interpretation': "O genótipo C/T (Ser/Phe) tem um efeito mínimo ou negligenciável na atividade da DAO."},
+            'T/T': {'zygosity': 'Homozigoto Variante', 'result': 'minimamente reduzida', 
+                    'interpretation': "O genótipo T/T (Phe/Phe) está associado a uma leve redução na atividade da DAO."}
         }
     },
     'rs1049793': {
@@ -36,10 +36,10 @@ VARIANTS = {
         'genotypes': {
             'C/C': {'zygosity': 'Homozigoto Referência', 'result': 'padrão', 
                     'interpretation': "O genótipo C/C (His/His) é o de referência (wild-type) e está associado à atividade enzimática normal da DAO."},
-            'C/G': {'zygosity': 'Heterozigoto', 'result': 'reduzida (↓ ~34%)', 
-                    'interpretation': "O genótipo C/G (His/Asp) causa uma perda de atividade da DAO de aproximadamente 34% (retendo ~66% da função normal). Este resultado indica um risco moderadamente aumentado para intolerância à histamina, com possível predisposição a sintomas gastrointestinais e cutâneos (como dermatite)."},
-            'G/G': {'zygosity': 'Homozigoto Variante', 'result': 'severamente reduzida (↓ ~49%)', 
-                    'interpretation': "O genótipo G/G (Asp/Asp) causa uma perda de atividade da DAO de aproximadamente 49% (retendo ~51% da função normal). Este resultado caracteriza uma forte deficiência de DAO e um alto risco de intolerância à histamina, com predisposição a sintomas como distúrbios gastrointestinais, dores de cabeça e rubor facial."}
+            'C/G': {'zygosity': 'Heterozigoto', 'result': 'reduzida', 
+                    'interpretation': "O genótipo C/G (His/Asp) causa uma perda de atividade da DAO de aproximadamente ~34% (retendo ~66% da função normal)."},
+            'G/G': {'zygosity': 'Homozigoto Variante', 'result': 'reduzida', 
+                    'interpretation': "O genótipo G/G (Asp/Asp) causa uma perda de atividade da DAO de aproximadamente ~49% (retendo ~51% da função normal)."}
         }
     }
 }
